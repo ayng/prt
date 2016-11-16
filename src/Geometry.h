@@ -1,4 +1,3 @@
-/** Copyright 2016 Alex Yang */
 #ifndef SRC_GEOMETRY_H_
 #define SRC_GEOMETRY_H_
 

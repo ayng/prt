@@ -1,4 +1,3 @@
-/** Copyright 2016 Alex Yang */
 #ifndef SRC_SCENE_H_
 #define SRC_SCENE_H_
 

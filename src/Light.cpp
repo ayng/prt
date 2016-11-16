@@ -1,4 +1,3 @@
-/** Copyright 2016 Alex Yang */
 #include <cmath>
 #include "Light.h"
 

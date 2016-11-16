@@ -1,4 +1,3 @@
-/** Copyright 2016 Alex Yang */
 #include <random>
 #include <fstream>
 #include <sstream>
