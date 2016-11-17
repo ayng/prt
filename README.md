@@ -14,6 +14,21 @@ To remove the `build` directory:
 $ rake clean
 ```
 
+If you don't have `rake` installed, you can just use `cmake` directly.
+
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
+
+If `cmake` is failing because it's missing Freetype (or some other library), you'll have to install it on your machine separate before trying again. Here's a list of external libraries that `cmake` expects to be able to find on the machine. Most machines will have these installed already.
+
+* libpng
+* zlib
+* Freetype
+
 # Running
 
 There are a few options to specify.
