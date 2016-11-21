@@ -1,8 +1,8 @@
 #ifndef LIGHT_H
 #define LIGHT_H
 
-#include "Vector.h"
 #include "Color.h"
+#include <Eigen/Dense> 
 
 class Light {
  public:
@@ -10,28 +10,28 @@ class Light {
 
   Light();
   Light(Color intensity);
-  virtual Vector3 dirToLight(const Vector3& p) = 0;
-  virtual double distanceToLight (const Vector3& p) = 0;
+  virtual Eigen::Vector3d dirToLight(const Eigen::Vector3d& p) = 0;
+  virtual double distanceToLight (const Eigen::Vector3d& p) = 0;
 };
 
 class PointLight : public Light {
   public:
-    Vector3 point;
+    Eigen::Vector3d point;
 
     PointLight ();
-    PointLight (Vector3 p, Color i);
-    Vector3 dirToLight (const Vector3& p) override;
-    double distanceToLight (const Vector3& p) override;
+    PointLight (Eigen::Vector3d p, Color i);
+    Eigen::Vector3d dirToLight (const Eigen::Vector3d& p) override;
+    double distanceToLight (const Eigen::Vector3d& p) override;
 };
 
 class DirectionalLight : public Light {
   public:
-    Vector3 dir;
+    Eigen::Vector3d dir;
 
     DirectionalLight ();
-    DirectionalLight (Vector3 d, Color i);
-    Vector3 dirToLight (const Vector3& p) override;
-    double distanceToLight (const Vector3& p) override;
+    DirectionalLight (Eigen::Vector3d d, Color i);
+    Eigen::Vector3d dirToLight (const Eigen::Vector3d& p) override;
+    double distanceToLight (const Eigen::Vector3d& p) override;
 };
 
 class AmbientLight {};

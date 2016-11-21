@@ -1,3 +1,4 @@
+/** Copyright 2016 Alex Yang */
 #ifndef SRC_SCENE_H_
 #define SRC_SCENE_H_
 
@@ -8,7 +9,6 @@
 #include "Geometry.h"
 #include "Light.h"
 #include "Camera.h"
-#include "Matrix.h"
 #include "Ray.h"
 #include "Material.h"
 #include "Profiler.h"
@@ -26,8 +26,8 @@ class Scene {
   Color ambientLight;
   Camera camera;
 
-  Matrix4 xfIn;
-  Matrix4 xfOut;
+  Eigen::Transform<double,3,Eigen::Affine> xfIn;
+  Eigen::Transform<double,3,Eigen::Affine> xfOut;
 
   Material material;
 
@@ -48,12 +48,12 @@ class Scene {
 
   /* Shading */
   Color ambient(const Color& ka);
-  Color diffuse(const Vector3& p, const Vector3& n, const Vector3& l,
+  Color diffuse(const Eigen::Vector3d& p, const Eigen::Vector3d& n, const Eigen::Vector3d& l,
     const Color& kd, const Color& intensity);
-  Color specular(const Vector3& p, const Vector3& n, const Vector3& v,
-    const Vector3& l, const Color& ks, double sp, const Color& intensity);
-  double specularIncidence(const Vector3& p, const Vector3& n, const Vector3& v,
-    const Vector3& l, double sp);
+  Color specular(const Eigen::Vector3d& p, const Eigen::Vector3d& n, const Eigen::Vector3d& v,
+    const Eigen::Vector3d& l, const Color& ks, double sp, const Color& intensity);
+  double specularIncidence(const Eigen::Vector3d& p, const Eigen::Vector3d& n, const Eigen::Vector3d& v,
+    const Eigen::Vector3d& l, double sp);
 };
 
 #endif  // SRC_SCENE_H_
