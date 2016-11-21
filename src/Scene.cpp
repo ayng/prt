@@ -11,6 +11,8 @@
 #include "Scene.h"
 #include <pngwriter.h>
 
+#include <omp.h>
+
 Scene::Scene(int res, int aa) {
   resolution = res;
   antialias = aa;
@@ -156,12 +158,8 @@ std::vector<Color> Scene::render() {
 
   // Find rays from the pixel locations.
   double start = profiler.now();
+  #pragma omp parallel for collapse(2)
   for (int y = 0; y < height; y++) {
-    if (height > 20 && y % (height / 20) == 0) {
-      printf("[ %3.0f%% ] %.3f s\n",
-        static_cast<double>(y) / height * 100,
-        profiler.now() - start);
-    }
     for (int x = 0; x < width; x++) {
       // Determine world coordinates of pixel at (x, y) of image plane.
       Vector3 worldPixel = camera.bl
