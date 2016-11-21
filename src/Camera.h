@@ -1,16 +1,15 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "Vector.h"
-#include "Matrix.h"
+#include <Eigen/Dense> 
 
 class Camera {
   public:
-    Vector3 e, bl, br, tl, tr;
-    Matrix4 transform;
+    Eigen::Vector3d e, bl, br, tl, tr;
+    Eigen::Transform<double,3, Eigen::Affine> transform;
 
     Camera ();
-    Camera (const Vector3 &_e, const Vector3 &_bl, const Vector3 &_br,
-            const Vector3 &_tl, const Vector3 &_tr);
+    Camera (const Eigen::Vector3d &_e, const Eigen::Vector3d &_bl, const Eigen::Vector3d &_br,
+            const Eigen::Vector3d &_tl, const Eigen::Vector3d &_tr);
 };
 #endif

@@ -1,38 +1,42 @@
+/** Copyright 2016 Alex Yang */
 #ifndef SRC_GEOMETRY_H_
 #define SRC_GEOMETRY_H_
 
 #include "Material.h"
-#include "Matrix.h"
-#include "Vector.h"
+#include <Eigen/Dense>
+#include "Ray.h"
+
+static Eigen::Vector3d NAN_VECTOR(nan(""), nan(""), nan(""));
+
 
 class Geometry {
  public:
   Material material;
-  Matrix4 worldToObject, objectToWorld;
+  Eigen::Transform<double,3,Eigen::Affine> worldToObject, objectToWorld;
 
   Geometry();
-  Geometry(Material mat, Matrix4 w2o, Matrix4 o2w);
+  Geometry(Material mat, Eigen::Transform<double,3,Eigen::Affine> w2o, Eigen::Transform<double,3,Eigen::Affine> o2w);
   virtual Ray intersect(const Ray& ray) = 0;
 };
 
 class Triangle : public Geometry {
  public:
-  Vector3 a, b, c;
-  Vector3 normal;
+  Eigen::Vector3d a, b, c;
+  Eigen::Vector3d normal;
 
   Triangle();
-  Triangle(Vector3 aa, Vector3 bb, Vector3 cc,
-    Material mat, Matrix4 w2o, Matrix4 o2w);
+  Triangle(Eigen::Vector3d aa, Eigen::Vector3d bb, Eigen::Vector3d cc,
+    Material mat, Eigen::Transform<double,3,Eigen::Affine> w2o, Eigen::Transform<double,3,Eigen::Affine> o2w);
   Ray intersect(const Ray& ray);
 };
 
 class Sphere : public Geometry {
  public:
-  Vector3 center;
+  Eigen::Vector3d center;
   double radius;
 
   Sphere();
-  Sphere(Vector3 c, double r, Material mat, Matrix4 w2o, Matrix4 o2w);
+  Sphere(Eigen::Vector3d c, double r, Material mat, Eigen::Transform<double,3,Eigen::Affine> w2o, Eigen::Transform<double,3,Eigen::Affine> o2w);
   Ray intersect(const Ray& ray);
 };
 
