@@ -22,7 +22,7 @@ task :generate_ref_output do
   sh "mkdir test/ref_output/"
   for scene in Dir.entries("scenes").select{|f| !File.directory? f} do
     output = "test/ref_output/#{scene.sub(".txt", "-ref.png")}"
-    sh "./build/raytracer -o #{output} < scenes/#{scene}"
+    sh "./build/raytracer -o #{output} -r 40 < scenes/#{scene}"
   end
 end
 

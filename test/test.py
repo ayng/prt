@@ -55,10 +55,25 @@ def main():
     for case in to_test:
         target = "/tmp/{0}.png".format(case)
         print("Running test case: {0}".format(case))
-        if verbose:
-            os.system("./build/raytracer -o {0} < {1}".format(target, scene_path(case)))
-        else:
-            os.system("./build/raytracer -o {0} < {1} | echo -n".format(target, scene_path(case)))
+
+        # cmd is the command to run for this test.
+        # full_cmd is either ==cmd or ==cmd +silenced output,
+        # depending on the verbose flag
+        cmd = "build/raytracer -o {} -r 40 < {}".format(target, \
+                scene_path(case))
+        full_cmd = cmd
+        if not verbose:
+            # this silences stdout but not stderr
+            full_cmd += " > /dev/null"
+
+        # run the command. if it fails, print the command for further
+        # inspection and skip the rest of this test.
+        exitcode = os.system(full_cmd)
+        if exitcode != 0:
+            print("The following command failed:")
+            print(cmd)
+            continue
+
         result = check_result(case, target, ref_output_path(case))
         if result:
             passed_tests += 1

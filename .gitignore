@@ -1,3 +1,4 @@
 build/
 *.png
 !test/ref_output/*.png
+test/__pycache__
