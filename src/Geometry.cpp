@@ -11,7 +11,18 @@ Triangle::Triangle() {}
 Triangle::Triangle(Vector3 aa, Vector3 bb, Vector3 cc,
   Material mat, Matrix4 w2o, Matrix4 o2w)
   : a(aa), b(bb), c(cc), normal((bb - aa).cross(cc - aa).normalized()),
-    Geometry(mat, w2o, o2w) {}
+    Geometry(mat, w2o, o2w) {
+  // Transform triangle vertices to world space.
+  Vector3 aW = o2w.dot(Vector4(a, 1)).toVector3();
+  Vector3 bW = o2w.dot(Vector4(b, 1)).toVector3();
+  Vector3 cW = o2w.dot(Vector4(c, 1)).toVector3();
+  // Create bounding box.
+  std::vector<BBox> boxes;
+  boxes.push_back(BBox(aW, aW));
+  boxes.push_back(BBox(bW, bW));
+  boxes.push_back(BBox(cW, cW));
+  bbox = BBox(boxes);
+}
 Ray Triangle::intersect(const Ray& ray) {
   Ray xfRay = worldToObject.transform(ray);
   // Determine t.
@@ -36,9 +47,12 @@ Ray Triangle::intersect(const Ray& ray) {
   }
 }
 
+
 Sphere::Sphere() {}
 Sphere::Sphere(Vector3 c, double r, Material mat, Matrix4 w2o, Matrix4 o2w)
-  : center(c), radius(r), Geometry(mat, w2o, o2w) {}
+  : center(c), radius(r), Geometry(mat, w2o, o2w) {
+  
+}
 Ray Sphere::intersect(const Ray& ray) {
   // Transform ray to the coordinate space of the sphere.
   Ray xfRay = worldToObject.transform(ray);

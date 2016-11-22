@@ -4,11 +4,13 @@
 #include "Material.h"
 #include "Matrix.h"
 #include "Vector.h"
+#include "BBox.h"
 
 class Geometry {
  public:
   Material material;
   Matrix4 worldToObject, objectToWorld;
+  BBox bbox;
 
   Geometry();
   Geometry(Material mat, Matrix4 w2o, Matrix4 o2w);

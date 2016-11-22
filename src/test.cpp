@@ -10,6 +10,22 @@
 
 int main() {
   {
+    Material mat = {Color(1,1,1), Color(1,1,1), Color(1,1,1), 10, Color(1,1,1)};
+    Triangle tri(Vector3(0,0,0), Vector3(0,1,0), Vector3(1,0,0), mat, rotate(-45,0,0), rotate(45,0,0));
+    tri.bbox.min.dump();
+    tri.bbox.max.dump();
+  }
+  {
+    BBox box1(Vector3(-1, -2, -3), Vector3(3, 2, 1));
+    BBox box2(Vector3(-2, -1, 3), Vector3(5, 1, 0));
+    std::vector<BBox> boxes;
+    boxes.push_back(box1);
+    boxes.push_back(box2);
+    BBox bigBox(boxes);
+    bigBox.min.dump();
+    bigBox.max.dump();
+  }
+  {
     Vector3 i (1, 1, 0);
     Vector3 j (0, 1, 0);
     i.cross(j).dump();
