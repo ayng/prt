@@ -34,7 +34,7 @@ int Scene::getHeight() {
 }
 
 double toRadians (double d) { 
-  return d * M_PI / 180; 
+  return d * M_PI / 180.0; 
 } 
 
 void Scene::parseLine(std::string line) {
@@ -71,20 +71,18 @@ void Scene::parseLine(std::string line) {
   } else if (prefix == "xft") {
     double x, y, z;
     iss >> x >> y >> z;
-    xfIn = Eigen::Translation3d(-x, -y, -z) * xfIn;
-    xfOut = xfOut * Eigen::Translation3d(x, y, z);
+    Eigen::Translation3d m(-x,-y,-z); 
+    xfIn = m * xfIn;
+    xfOut = xfOut * m.inverse(); 
 
   } else if (prefix == "xfr") {
     double x, y, z;
     iss >> x >> y >> z;
-    Eigen::Transform<double,3,Eigen::Affine> m (Eigen::AngleAxis<double>(toRadians(-x), Eigen::Vector3d::UnitZ())
-    * Eigen::AngleAxis<double>(toRadians(-y), Eigen::Vector3d::UnitY())
-    * Eigen::AngleAxis<double>(toRadians(-z), Eigen::Vector3d::UnitZ()));
-    Eigen::Transform<double,3,Eigen::Affine> m2 (Eigen::AngleAxis<double>(toRadians(x), Eigen::Vector3d::UnitZ())
-    * Eigen::AngleAxis<double>(toRadians(y), Eigen::Vector3d::UnitY())
-    * Eigen::AngleAxis<double>(toRadians(z), Eigen::Vector3d::UnitZ()));
+    Eigen::Vector3d axis (toRadians(-x),toRadians(-y),toRadians(-z)); 
+    Eigen::Vector3d axisInverse = -1 * axis; 
+    Eigen::Transform<double,3,Eigen::Affine> m (Eigen::AngleAxis<double>(axis.norm(), axis.normalized()));  
     xfIn = m * xfIn;
-    xfOut = xfOut * m2; 
+    xfOut = xfOut * m.inverse();
   } else if (prefix == "xfs") {
     double x, y, z;
     iss >> x >> y >> z;
