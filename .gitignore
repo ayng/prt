@@ -1,2 +1,3 @@
 build/
 *.png
+!test/ref_output/*.png
