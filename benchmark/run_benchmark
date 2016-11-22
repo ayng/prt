@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# This script depends on linux perf to be able to measure floating point
+# operations. Note that floating point operation counting is only supported by
+# Ivy Bridge and Sandy Bridge hardware. If your CPU is neither of these, the
+# script will still work, but will output 0 for the number of floating point
+# operations.
+
+# get directory this script is in
+dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Test cases listed here
+declare -a arr=(
+  "build/raytracer -o test.png -r 400 < scenes/phong.txt"
+  "build/raytracer -o test.png -r 20 < scenes/bunny.txt"
+  "build/raytracer -o test.png -r 400 < scenes/moon.txt"
+  "build/raytracer -o test.png -r 400 < scenes/cube.txt"
+  "build/raytracer -o test.png -r 400 < scenes/blanket.txt"
+  "build/raytracer -o test.png -r 400 < scenes/journal_reflection.txt"
+)
+
+cd $dir/..
+
+echo "Command, Output dimensions, Time in seconds, FLP operations, GFlops"
+
+for i in "${arr[@]}"; do
+  # These 4 codes account for all floating point operations.
+  cmd="((perf stat -e r531010 -e r532010 -e r534010 -e r538010 -x, $i) 2>&1)"
+  output=$(eval $cmd)
+  # This code is fragile. It expects a particular type of formatting from
+  # raytracer and uses regex to navigate it.  If the output format ever
+  # changes, re-evaluate this code.
+  rendertime=$(echo "$output" | egrep "seconds" | egrep -o "[0-9]+\.[0-9]+")
+  res=$(echo "$output" | egrep "Preparing" | egrep -o "[0-9]+x[0-9]+")
+  # Count the number of floating point operations performed
+  ssingle=$(echo "$output" | egrep "r532010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  psingle=$(echo "$output" | egrep "r534010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  sdouble=$(echo "$output" | egrep "r538010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  pdouble=$(echo "$output" | egrep "r531010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  flpops=$((pdouble+sdouble+ssingle+psingle))
+  # Use python to calculate the gflops
+  gflops=$(echo "print $flpops/$rendertime/1e9" | python)
+
+  echo "$i, $res, $rendertime, $flpops, $gflops"
+done

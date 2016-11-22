@@ -1,3 +1,4 @@
+/** Copyright 2016 Alex Yang */
 #include <random>
 #include <fstream>
 #include <sstream>
@@ -10,26 +11,31 @@
 
 #include "Scene.h"
 #include <pngwriter.h>
+#include <Eigen/Dense> 
 
 Scene::Scene(int res, int aa) {
   resolution = res;
   antialias = aa;
-  xfIn = scale(1, 1, 1);
-  xfOut = scale(1, 1, 1);
+  xfIn = Eigen::Scaling(1.0, 1.0, 1.0);
+  xfOut = Eigen::Scaling(1.0, 1.0, 1.0);
   material =
     {Color(.5, .5, .5), Color(0, 0, 0), Color(0, 0, 0), 1, Color(0, 0, 0)};
 }
 
 int Scene::getWidth() {
-  Vector3 imagePlaneX = camera.br - camera.bl;
-  double imagePlaneW = imagePlaneX.magnitude();
+  Eigen::Vector3d imagePlaneX = camera.br - camera.bl;
+  double imagePlaneW = imagePlaneX.norm();
   return static_cast<int>(resolution * imagePlaneW);
 }
 int Scene::getHeight() {
-  Vector3 imagePlaneY = camera.tl - camera.bl;
-  double imagePlaneH = imagePlaneY.magnitude();
+  Eigen::Vector3d imagePlaneY = camera.tl - camera.bl;
+  double imagePlaneH = imagePlaneY.norm();
   return static_cast<int>(resolution * imagePlaneH);
 }
+
+double toRadians (double d) { 
+  return d * M_PI / 180.0; 
+} 
 
 void Scene::parseLine(std::string line) {
   if (line.empty()) return;
@@ -40,43 +46,48 @@ void Scene::parseLine(std::string line) {
   if (prefix[0] == '#') return;
 
   if (prefix == "cam") {
-    Vector3 pts[5];
+    Eigen::Vector3d pts[5];
     for (int i = 0; i < 5; i++)
-      iss >> pts[i].x >> pts[i].y >> pts[i].z;
+      iss >> pts[i].x() >> pts[i].y() >> pts[i].z();
     camera = Camera(pts[0], pts[1], pts[2], pts[3], pts[4]);
   } else if (prefix == "tri") {
     double x1, y1, z1, x2, y2, z2, x3, y3, z3;
     iss >> x1 >> y1 >> z1 >> x2 >> y2 >> z2 >> x3 >> y3 >> z3;
     objects.emplace_back(
-      new Triangle(Vector3(x1, y1, z1), Vector3(x2, y2, z2),
-                   Vector3(x3, y3, z3), material, xfIn, xfOut));
+      new Triangle(Eigen::Vector3d(x1, y1, z1), Eigen::Vector3d(x2, y2, z2),
+                   Eigen::Vector3d(x3, y3, z3), material, xfIn, xfOut));
   } else if (prefix == "sph") {
     double cx, cy, cz, r;
     iss >> cx >> cy >> cz >> r;
     objects.emplace_back(
-      new Sphere(Vector3(cx, cy, cz), r, material, xfIn, xfOut));
+      new Sphere(Eigen::Vector3d(cx, cy, cz), r, material, xfIn, xfOut));
   } else if (prefix == "obj") {
     std::string filename;
     iss >> filename;
     parseObj(filename.substr(1, filename.size()-2));
   } else if (prefix == "xfz") {
-    xfIn = scale(1, 1, 1);
-    xfOut = scale(1, 1, 1);
+    xfIn = Eigen::Scaling(1.0, 1.0, 1.0);
+    xfOut = Eigen::Scaling(1.0, 1.0, 1.0);
   } else if (prefix == "xft") {
     double x, y, z;
     iss >> x >> y >> z;
-    xfIn = translate(-x, -y, -z).dot(xfIn);
-    xfOut = xfOut.dot(translate(x, y, z));
+    Eigen::Translation3d m(-x,-y,-z); 
+    xfIn = m * xfIn;
+    xfOut = xfOut * m.inverse(); 
+
   } else if (prefix == "xfr") {
     double x, y, z;
     iss >> x >> y >> z;
-    xfIn = rotate(-x, -y, -z).dot(xfIn);
-    xfOut = xfOut.dot(rotate(x, y, z));
+    Eigen::Vector3d axis (toRadians(-x),toRadians(-y),toRadians(-z)); 
+    Eigen::Vector3d axisInverse = -1 * axis; 
+    Eigen::Transform<double,3,Eigen::Affine> m (Eigen::AngleAxis<double>(axis.norm(), axis.normalized()));  
+    xfIn = m * xfIn;
+    xfOut = xfOut * m.inverse();
   } else if (prefix == "xfs") {
     double x, y, z;
     iss >> x >> y >> z;
-    xfIn = scale(1/x, 1/y, 1/z).dot(xfIn);
-    xfOut = xfOut.dot(scale(x, y, z));
+    xfIn = Eigen::Scaling(1.0/x, 1.0/y, 1.0/z) * xfIn;
+    xfOut = xfOut * Eigen::Scaling(x, y, z);
   } else if (prefix == "lta") {
     double r, g, b;
     iss >> r >> g >> b;
@@ -84,11 +95,11 @@ void Scene::parseLine(std::string line) {
   } else if (prefix == "ltp") {
     double x, y, z, r, g, b, falloff;
     iss >> x >> y >> z >> r >> g >> b >> falloff;
-    lights.emplace_back(new PointLight(Vector3(x, y, z), Color(r, g, b)));
+    lights.emplace_back(new PointLight(Eigen::Vector3d(x, y, z), Color(r, g, b)));
   } else if (prefix == "ltd") {
     double x, y, z, r, g, b;
     iss >> x >> y >> z >> r >> g >> b;
-    lights.emplace_back(new DirectionalLight(Vector3(x, y, z), Color(r, g, b)));
+    lights.emplace_back(new DirectionalLight(Eigen::Vector3d(x, y, z), Color(r, g, b)));
   } else if (prefix == "mat") {
     double kar, kag, kab, kdr, kdg, kdb, ksr, ksg, ksb, ksp, krr, krg, krb;
     iss >> kar >> kag >> kab
@@ -113,7 +124,7 @@ void Scene::parseLine(std::string line) {
 void Scene::parseObj(std::string filename) {
   std::ifstream infile(filename);
   std::string line;
-  std::vector<Vector3> vertices;
+  std::vector<Eigen::Vector3d> vertices;
   int numVertices = 0;
   int numFaces = 0;
   while (std::getline(infile, line)) {
@@ -123,7 +134,7 @@ void Scene::parseObj(std::string filename) {
     if (prefix.compare("v") == 0) {
       double x, y, z;
       iss >> x >> y >> z;
-      vertices.push_back(Vector3(x, y, z));
+      vertices.push_back(Eigen::Vector3d(x, y, z));
       numVertices++;
     } else if (prefix.compare("f") == 0) {
       int a, b, c;
@@ -140,14 +151,14 @@ void Scene::parseObj(std::string filename) {
 
 std::vector<Color> Scene::render() {
   // Determine pixel location from the image plane.
-  Vector3 imagePlaneY = camera.tl - camera.bl;
-  Vector3 imagePlaneX = camera.br - camera.bl;
-  double imagePlaneH = imagePlaneY.magnitude();
-  double imagePlaneW = imagePlaneX.magnitude();
+  Eigen::Vector3d imagePlaneY = camera.tl - camera.bl;
+  Eigen::Vector3d imagePlaneX = camera.br - camera.bl;
+  double imagePlaneH = imagePlaneY.norm();
+  double imagePlaneW = imagePlaneX.norm();
   int height = static_cast<int>(resolution * imagePlaneH);
   int width = static_cast<int>(resolution * imagePlaneW);
-  Vector3 unitY = imagePlaneY.normalized();
-  Vector3 unitX = imagePlaneX.normalized();
+  Eigen::Vector3d unitY = imagePlaneY.normalized();
+  Eigen::Vector3d unitX = imagePlaneX.normalized();
 
   printf("[RENDER] Preparing %dx%d image.\n", width, height);
 
@@ -164,15 +175,15 @@ std::vector<Color> Scene::render() {
     }
     for (int x = 0; x < width; x++) {
       // Determine world coordinates of pixel at (x, y) of image plane.
-      Vector3 worldPixel = camera.bl
+      Eigen::Vector3d worldPixel = camera.bl
         + unitY * (static_cast<double>(y) / resolution)
         + unitX * (static_cast<double>(x) / resolution);
       std::vector<std::pair<double, double>> samples = jitteredGrid(antialias);
       for (std::pair<double, double> pt : samples) {
-        Vector3 worldPoint = worldPixel
+        Eigen::Vector3d worldPoint = worldPixel
           + unitX * (pt.first / resolution)
           + unitY * (pt.second / resolution);
-        Vector3 direction = worldPoint - camera.e;
+        Eigen::Vector3d direction = worldPoint - camera.e;
         frame[y*width+x] = frame[y*width+x] + trace({camera.e, direction});
       }
       frame[y*width+x] = frame[y*width+x] * (1.0 / samples.size());
@@ -218,8 +229,8 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
   for (int i = 0; i < objects.size(); i++) {
     Geometry& geometry = *objects[i];
     Ray intersection = geometry.intersect(ray);
-    if (intersection.point.isDefined()) {
-      double distance = (intersection.point - ray.point).magnitude();
+    if (intersection.isDefined()) {
+      double distance = (intersection.point - ray.point).norm();
       if (distance < nearestDistance && distance > 1e-6) {
         nearestIntersection = intersection;
         nearestDistance = distance;
@@ -228,26 +239,26 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
     }
   }
 
-  if (!nearestIntersection.point.isDefined()) {
+  if (!nearestIntersection.isDefined()) {
     return kBackgroundColor;
   }
 
-  Vector3 p = nearestIntersection.point;
-  Vector3 n = nearestIntersection.dir.normalized();
-  Vector3 v = (ray.point - p).normalized();
+  Eigen::Vector3d p = nearestIntersection.point;
+  Eigen::Vector3d n = nearestIntersection.dir.normalized();
+  Eigen::Vector3d v = (ray.point - p).normalized();
   Material mat = nearestMaterial;
   Color result = ambient(mat.ka);
   for (int i = 0; i < lights.size(); i++) {
     Light& light = *lights[i];
-    Vector3 l = light.dirToLight(p);
+    Eigen::Vector3d l = light.dirToLight(p);
     Ray shadowRay = {p, l};
     // Check if there are any intersections between this point and the light.
     bool isShadowed = false;
     for (int i = 0; i < objects.size(); i++) {
       Geometry& geometry = *objects[i];
       Ray intersection = geometry.intersect(shadowRay);
-      if (intersection.point.isDefined()) {
-        double distanceToIntersection = (intersection.point - p).magnitude();
+      if (intersection.isDefined()) {
+        double distanceToIntersection = (intersection.point - p).norm();
         // If the intersection lies between the light and the point,
         // skip shading for this light.
         // The second condition prevents self-shadowing.
@@ -263,7 +274,7 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
     }
   }
   // Recursively trace reflective rays.
-  Vector3 reflectedDir = (2 * n) - v;
+  Eigen::Vector3d reflectedDir = (2 * n) - v;
   result = result + mat.kr * trace({p, reflectedDir}, bouncesLeft-1);
   return result;
 }
@@ -271,18 +282,18 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
 Color Scene::ambient(const Color& ka) {
   return ka * ambientLight;
 }
-Color Scene::diffuse(const Vector3& p, const Vector3& n, const Vector3& l,
+Color Scene::diffuse(const Eigen::Vector3d& p, const Eigen::Vector3d& n, const Eigen::Vector3d& l,
   const Color& kd, const Color& intensity) {
   return kd * intensity * std::max(0.0, l.dot(n));
 }
-Color Scene::specular(const Vector3& p, const Vector3& n, const Vector3& v,
-  const Vector3& l, const Color& ks, double sp, const Color& intensity) {
+Color Scene::specular(const Eigen::Vector3d& p, const Eigen::Vector3d& n, const Eigen::Vector3d& v,
+  const Eigen::Vector3d& l, const Color& ks, double sp, const Color& intensity) {
   return ks * intensity * specularIncidence(p, n, v, l, sp);
 }
-double Scene::specularIncidence(const Vector3& p, const Vector3& n,
-  const Vector3& v, const Vector3& l, double sp) {
-  Vector3 r = (-1.0 * l + 2.0 * l.dot(n) * n).normalized();
-  Vector3 h = (l + v).normalized();
-  Vector3 hProj = (h - n * h.dot(n)).normalized();
+double Scene::specularIncidence(const Eigen::Vector3d& p, const Eigen::Vector3d& n,
+  const Eigen::Vector3d& v, const Eigen::Vector3d& l, double sp) {
+  Eigen::Vector3d r = (-1.0 * l + 2.0 * l.dot(n) * n).normalized();
+  Eigen::Vector3d h = (l + v).normalized();
+  Eigen::Vector3d hProj = (h - n * h.dot(n)).normalized();
   return std::pow(std::max(0.0, r.dot(v)), sp);
 }
