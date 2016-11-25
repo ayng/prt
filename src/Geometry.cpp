@@ -48,8 +48,24 @@ Ray Triangle::intersect(const Ray& ray) {
 
 Sphere::Sphere() {}
 Sphere::Sphere(Vector3 c, double r, Material mat, Matrix4 w2o, Matrix4 o2w)
-  : center(c), radius(r), Geometry(mat, w2o, o2w) {
-  
+  : center(c), radius(r), Geometry(mat, w2o, o2w)
+{
+  Vector3 min(center.x - radius, center.y - radius, center.z - radius);
+  Vector3 max(center.x + radius, center.y + radius, center.z + radius);
+  std::vector<Vector3> corners;
+  corners.push_back(Vector3(min.x, min.y, min.z));
+  corners.push_back(Vector3(max.x, min.y, min.z));
+  corners.push_back(Vector3(min.x, max.y, min.z));
+  corners.push_back(Vector3(min.x, min.y, max.z));
+  corners.push_back(Vector3(min.x, max.y, max.z));
+  corners.push_back(Vector3(max.x, min.y, max.z));
+  corners.push_back(Vector3(max.x, max.y, min.z));
+  corners.push_back(Vector3(max.x, max.y, max.z));
+
+  for (int i = 0; i < corners.size(); i++) {
+    Vector3 xfCorner = o2w.dot(Vector4(corners[i], 1)).toVector3();
+    bbox.expand(BBox(xfCorner, xfCorner));
+  }
 }
 Ray Sphere::intersect(const Ray& ray) {
   // Transform ray to the coordinate space of the sphere.
