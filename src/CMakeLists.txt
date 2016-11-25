@@ -13,6 +13,7 @@ add_library(rt
   Light.cpp
   Geometry.cpp
   BBox.cpp
+  BVHNode.cpp
   Camera.cpp
   Profiler.cpp
 )

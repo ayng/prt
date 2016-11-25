@@ -11,9 +11,10 @@
 #include "Scene.h"
 #include <pngwriter.h>
 
-Scene::Scene(int res, int aa) {
+Scene::Scene(int res, int aa, bool bvh) {
   resolution = res;
   antialias = aa;
+  bvhEnabled = bvh;
   xfIn = scale(1, 1, 1);
   xfOut = scale(1, 1, 1);
   material =
@@ -138,6 +139,42 @@ void Scene::parseObj(std::string filename) {
          filename.c_str(), numVertices, numFaces);
 }
 
+std::shared_ptr<BVHNode> Scene::generateBVH() {
+  // Create the box that encompasses the entire scene.
+  BBox bigBox;
+  for (auto objPtr : objects) {
+    bigBox.expand(objPtr->bbox);
+  }
+
+  // Initialize the root node using the constructed bbox.
+  auto root = std::make_shared<BVHNode>(objects, bigBox);
+  //root->objects = objects;
+  //root->bbox = bigBox;
+
+  // Add the root node to the stack of nodes to be partitioned.
+  std::vector<std::shared_ptr<BVHNode>> toPart;
+  toPart.push_back(root);
+
+  // Partition nodes, adding resultant nodes onto the stack.
+  // When a node refuses to partition, nothing is added to the stack.
+  while (!toPart.empty()) {
+    // Pop a node from the front of the queue.
+    auto curPtr = toPart.back();
+    toPart.pop_back();
+
+    // Attempt to partition the node.
+    bool isPartitioned = curPtr->partition();
+    if (isPartitioned) {
+      toPart.push_back(curPtr->left);
+      toPart.push_back(curPtr->right);
+    }
+  }
+
+  root->printStats();
+
+  return root;
+}
+
 std::vector<Color> Scene::render() {
   // Determine pixel location from the image plane.
   Vector3 imagePlaneY = camera.tl - camera.bl;
@@ -154,6 +191,11 @@ std::vector<Color> Scene::render() {
   // Initialize frame buffer.
   std::vector<Color> frame(width*height);
 
+  // Generate BVH.
+  if (bvhEnabled) {
+    bvh = generateBVH();
+  }
+
   // Find rays from the pixel locations.
   double start = profiler.now();
   for (int y = 0; y < height; y++) {
@@ -165,15 +207,17 @@ std::vector<Color> Scene::render() {
     for (int x = 0; x < width; x++) {
       // Determine world coordinates of pixel at (x, y) of image plane.
       Vector3 worldPixel = camera.bl
-        + unitY * (static_cast<double>(y) / resolution)
-        + unitX * (static_cast<double>(x) / resolution);
+                         + unitY * (static_cast<double>(y) / resolution)
+                         + unitX * (static_cast<double>(x) / resolution);
       std::vector<std::pair<double, double>> samples = jitteredGrid(antialias);
       for (std::pair<double, double> pt : samples) {
         Vector3 worldPoint = worldPixel
-          + unitX * (pt.first / resolution)
-          + unitY * (pt.second / resolution);
+                           + unitX * (pt.first / resolution)
+                           + unitY * (pt.second / resolution);
         Vector3 direction = worldPoint - camera.e;
-        frame[y*width+x] = frame[y*width+x] + trace({camera.e, direction});
+        Ray ray = {camera.e, direction};
+        Color rayColor = trace(ray);
+        frame[y*width+x] = frame[y*width+x] + rayColor;
       }
       frame[y*width+x] = frame[y*width+x] * (1.0 / samples.size());
     }
@@ -212,6 +256,71 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
   if (bouncesLeft < 0) {
     return kBackgroundColor;
   }
+
+  std::pair<Ray, Material> nearest;
+  if (bvhEnabled) {
+    nearest = collideBVH(ray);
+  } else {
+    nearest = collide(ray, objects);
+  }
+  Ray nearestIntersection = nearest.first;
+  Material nearestMaterial = nearest.second;
+
+  if (!nearestIntersection.point.isDefined()) {
+    return kBackgroundColor;
+  }
+
+  Color result;
+
+  Vector3 p = nearestIntersection.point;
+  Vector3 n = nearestIntersection.dir.normalized();
+  Vector3 v = (ray.point - p).normalized();
+  Material mat = nearestMaterial;
+
+  // Perform phong shading, using shadow rays to check for shadows.
+  result = shade(p, n, v, mat);
+  // Recursively trace reflective rays.
+  Vector3 reflectedDir = (2 * n) - v;
+  result = result + mat.kr * trace({p, reflectedDir}, bouncesLeft-1);
+  return result;
+}
+
+std::pair<Ray, Material> Scene::collideBVH(const Ray& ray) {
+  double nearestDistance = INFINITY;
+  Ray nearestIntersection = {NAN_VECTOR, NAN_VECTOR};
+  Material nearestMaterial;
+
+  // Traverse the tree, iterating over any subtrees whose bounding box is hit
+  // by the ray.
+  std::vector<std::shared_ptr<BVHNode>> stack;
+  stack.push_back(bvh);
+  while (!stack.empty()) {
+    auto nodePtr = stack.back();
+    stack.pop_back();
+    if (nodePtr->bbox.isHitBy(ray)) {
+      if (nodePtr->left && nodePtr->left->bbox.isHitBy(ray))
+        stack.push_back(nodePtr->left);
+      if (nodePtr->right && nodePtr->right->bbox.isHitBy(ray))
+        stack.push_back(nodePtr->right);
+      if (!nodePtr->left && !nodePtr->right) {
+        auto nearest = collide(ray, nodePtr->objects);
+        double distance = (nearest.first.point - ray.point).magnitude();
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIntersection = nearest.first;
+          nearestMaterial = nearest.second;
+        }
+      }
+    }
+  }
+  
+  std::pair<Ray, Material> nearest =
+    std::make_pair(nearestIntersection, nearestMaterial);
+  return nearest;
+}
+std::pair<Ray, Material> Scene::collide(const Ray& ray,
+  const std::vector<std::shared_ptr<Geometry>>& objects)
+{
   double nearestDistance = INFINITY;
   Ray nearestIntersection = {NAN_VECTOR, NAN_VECTOR};
   Material nearestMaterial;
@@ -227,15 +336,15 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
       }
     }
   }
+  
+  std::pair<Ray, Material> nearest =
+    std::make_pair(nearestIntersection, nearestMaterial);
+  return nearest;
+}
 
-  if (!nearestIntersection.point.isDefined()) {
-    return kBackgroundColor;
-  }
-
-  Vector3 p = nearestIntersection.point;
-  Vector3 n = nearestIntersection.dir.normalized();
-  Vector3 v = (ray.point - p).normalized();
-  Material mat = nearestMaterial;
+Color Scene::shade(const Vector3& p, const Vector3& n, const Vector3& v,
+  const Material& mat)
+{
   Color result = ambient(mat.ka);
   for (int i = 0; i < lights.size(); i++) {
     Light& light = *lights[i];
@@ -262,9 +371,6 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
       result = result + specular(p, n, v, l, mat.ks, mat.sp, light.intensity);
     }
   }
-  // Recursively trace reflective rays.
-  Vector3 reflectedDir = (2 * n) - v;
-  result = result + mat.kr * trace({p, reflectedDir}, bouncesLeft-1);
   return result;
 }
 

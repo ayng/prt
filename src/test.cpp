@@ -18,10 +18,9 @@ int main() {
   {
     BBox box1(Vector3(-1, -2, -3), Vector3(3, 2, 1));
     BBox box2(Vector3(-2, -1, 3), Vector3(5, 1, 0));
-    std::vector<BBox> boxes;
-    boxes.push_back(box1);
-    boxes.push_back(box2);
-    BBox bigBox(boxes);
+    BBox bigBox;
+    bigBox.expand(box1);
+    bigBox.expand(box2);
     bigBox.min.dump();
     bigBox.max.dump();
   }

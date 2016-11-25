@@ -17,11 +17,9 @@ Triangle::Triangle(Vector3 aa, Vector3 bb, Vector3 cc,
   Vector3 bW = o2w.dot(Vector4(b, 1)).toVector3();
   Vector3 cW = o2w.dot(Vector4(c, 1)).toVector3();
   // Create bounding box.
-  std::vector<BBox> boxes;
-  boxes.push_back(BBox(aW, aW));
-  boxes.push_back(BBox(bW, bW));
-  boxes.push_back(BBox(cW, cW));
-  bbox = BBox(boxes);
+  bbox.expand(BBox(aW, aW));
+  bbox.expand(BBox(bW, bW));
+  bbox.expand(BBox(cW, cW));
 }
 Ray Triangle::intersect(const Ray& ray) {
   Ray xfRay = worldToObject.transform(ray);
