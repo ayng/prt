@@ -10,7 +10,7 @@ BVHNode::BVHNode(std::vector<std::shared_ptr<Geometry>> objs, BBox bb)
 }
 
 bool BVHNode::partition() {
-  if (objects.size() < kMinPartitionSize) {
+  if (objects.size() <= kMinPartitionSize) {
     return false;
   }
   Vector3 mid = bbox.centroid();
@@ -38,6 +38,11 @@ bool BVHNode::partition() {
   int yDiff = std::abs(yRight.size() - yLeft.size());
   int zDiff = std::abs(zRight.size() - zLeft.size());
   int minDiff = std::min(xDiff, std::min(yDiff, zDiff));
+  
+  if (minDiff == objects.size()) {
+    printf("[BVH] Warning: unable to split node of size %lu.\n", objects.size());
+    return false;
+  }
 
   std::vector<std::shared_ptr<Geometry>> leftObjs, rightObjs;
   if (xDiff == minDiff) {
