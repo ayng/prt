@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
   int antialias = kDefaultAA;
   char *filename = NULL;
   bool isFilenameSet = false;
+  bool bvhFlag = false;
 
   for (int i = 0; i < argc; i++) {
     std::string arg(argv[i]);
@@ -29,18 +30,21 @@ int main(int argc, char **argv) {
       resolution = atoi(argv[++i]);
     } else if (arg.compare("-aa") == 0) {
       antialias = atoi(argv[++i]);
+    } else if (arg.compare("-bvh") == 0) {
+      bvhFlag = true;
     }
   }
   printf("Resolution: %d\n", resolution);
   printf("Anti-alias: %d (casting %d rays per pixel)\n",
     antialias, antialias*antialias);
+  printf("BVH: %s\n", bvhFlag ? "enabled" : "disabled");
 
   if (!isFilenameSet) {
     std::cerr << "[ERROR] Filename not set.\n" << kUsage << std::endl;
     return 1;
   }
 
-  Scene scene(resolution, antialias);
+  Scene scene(resolution, antialias, bvhFlag);
 
   // Read scene description from stdin.
   for (std::string line; std::getline(std::cin, line);) {

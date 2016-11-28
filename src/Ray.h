@@ -5,15 +5,12 @@
 
 
 class Ray {
-	public: 
+ public: 
+  Eigen::Vector3d point;
+  Eigen::Vector3d dir;
 
-  		Eigen::Vector3d point;
-  		Eigen::Vector3d dir;
-
-  	public:
-
-  		bool isDefined () const; 
-  		Ray transform (Eigen::Transform<double,3,Eigen::Affine> transformation) const; 
+  bool isDefined () const; 
+  Ray transform (Eigen::Transform<double,3,Eigen::Affine> transformation) const; 
 };
 
 

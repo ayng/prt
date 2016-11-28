@@ -10,9 +10,21 @@ Geometry::Geometry(Material mat, Eigen::Transform<double,3,Eigen::Affine> w2o, E
 
 Triangle::Triangle() {}
 Triangle::Triangle(Eigen::Vector3d aa, Eigen::Vector3d bb, Eigen::Vector3d cc,
-  Material mat, Eigen::Transform<double,3,Eigen::Affine> w2o, Eigen::Transform<double,3,Eigen::Affine> o2w)
+  Material mat,
+  Eigen::Transform<double,3,Eigen::Affine> w2o,
+  Eigen::Transform<double,3,Eigen::Affine> o2w)
   : a(aa), b(bb), c(cc), normal((bb - aa).cross(cc - aa).normalized()),
-    Geometry(mat, w2o, o2w) {}
+    Geometry(mat, w2o, o2w)
+{
+  // Transform triangle vertices to world space.
+  Eigen::Vector3d aW = o2w * a;
+  Eigen::Vector3d bW = o2w * b;
+  Eigen::Vector3d cW = o2w * c;
+  // Create bounding box.
+  bbox.expand(BBox(aW, aW));
+  bbox.expand(BBox(bW, bW));
+  bbox.expand(BBox(cW, cW));
+}
 Ray Triangle::intersect(const Ray& ray) {
   Ray xfRay = ray.transform(worldToObject);
 
@@ -36,9 +48,33 @@ Ray Triangle::intersect(const Ray& ray) {
   }
 }
 
-Sphere::Sphere() {}
-Sphere::Sphere(Eigen::Vector3d c, double r, Material mat, Eigen::Transform<double,3,Eigen::Affine> w2o, Eigen::Transform<double,3,Eigen::Affine> o2w)
-  : center(c), radius(r), Geometry(mat, w2o, o2w) {}
+
+Sphere::Sphere()
+{
+}
+
+Sphere::Sphere(Eigen::Vector3d c, double r, Material mat,
+  Eigen::Transform<double,3,Eigen::Affine> w2o,
+  Eigen::Transform<double,3,Eigen::Affine> o2w)
+  : center(c), radius(r), Geometry(mat, w2o, o2w)
+{
+  Eigen::Vector3d min(center.x() - radius, center.y() - radius, center.z() - radius);
+  Eigen::Vector3d max(center.x() + radius, center.y() + radius, center.z() + radius);
+  std::vector<Eigen::Vector3d> corners;
+  corners.push_back(Eigen::Vector3d(min.x(), min.y(), min.z()));
+  corners.push_back(Eigen::Vector3d(max.x(), min.y(), min.z()));
+  corners.push_back(Eigen::Vector3d(min.x(), max.y(), min.z()));
+  corners.push_back(Eigen::Vector3d(min.x(), min.y(), max.z()));
+  corners.push_back(Eigen::Vector3d(min.x(), max.y(), max.z()));
+  corners.push_back(Eigen::Vector3d(max.x(), min.y(), max.z()));
+  corners.push_back(Eigen::Vector3d(max.x(), max.y(), min.z()));
+  corners.push_back(Eigen::Vector3d(max.x(), max.y(), max.z()));
+
+  for (int i = 0; i < corners.size(); i++) {
+    Eigen::Vector3d xfCorner = o2w * corners[i];
+    bbox.expand(BBox(xfCorner, xfCorner));
+  }
+}
 Ray Sphere::intersect(const Ray& ray) {
   // Transform ray to the coordinate space of the sphere.
   Ray xfRay = ray.transform(worldToObject);

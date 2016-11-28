@@ -3,15 +3,16 @@
 #define SRC_GEOMETRY_H_
 
 #include "Material.h"
+#include "BBox.h"
 #include <Eigen/Dense>
 #include "Ray.h"
 
 static Eigen::Vector3d NAN_VECTOR(nan(""), nan(""), nan(""));
 
-
 class Geometry {
  public:
   Material material;
+  BBox bbox;
   Eigen::Transform<double,3,Eigen::Affine> worldToObject, objectToWorld;
 
   Geometry();

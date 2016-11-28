@@ -12,6 +12,10 @@
 #include "Ray.h"
 #include "Material.h"
 #include "Profiler.h"
+#include "BVHNode.h"
+#include "BBox.h"
+
+#include <Eigen/Dense>
 
 class Scene {
  public:
@@ -20,11 +24,14 @@ class Scene {
 
   int resolution;
   int antialias;
+  bool bvhEnabled;
 
-  std::vector<std::unique_ptr<Geometry>> objects;
+  std::vector<std::shared_ptr<Geometry>> objects;
   std::vector<std::unique_ptr<Light>> lights;
   Color ambientLight;
   Camera camera;
+
+  std::shared_ptr<BVHNode> bvh;
 
   Eigen::Transform<double,3,Eigen::Affine> xfIn;
   Eigen::Transform<double,3,Eigen::Affine> xfOut;
@@ -33,20 +40,32 @@ class Scene {
 
   Profiler profiler;
 
-  Scene(int res, int aa);
+  Scene(int res, int aa, bool bvh);
 
   int getWidth();
   int getHeight();
 
+  /* Parsing */
   void parseLine(std::string line);
   void parseObj(std::string filename);
+
+  /* BVH */
+  std::shared_ptr<BVHNode> generateBVH();
+
+  /* Anti-aliasing */
+  std::vector<std::pair<double, double>> jitteredGrid(int size);
+
+  /* General methods */
   std::vector<Color> render();
   Color trace(const Ray& ray);
   Color trace(const Ray& ray, int bouncesLeft);
-  Ray intersect(Ray ray, Sphere s);
-  std::vector<std::pair<double, double>> jitteredGrid(int size);
+  std::pair<Ray, Material> collide(const Ray& ray,
+    const std::vector<std::shared_ptr<Geometry>>& objects);
+  std::pair<Ray, Material> collideBVH(const Ray& ray);
 
   /* Shading */
+  Color shade(const Eigen::Vector3d& p, const Eigen::Vector3d& n,
+    const Eigen::Vector3d& v, const Material& mat);
   Color ambient(const Color& ka);
   Color diffuse(const Eigen::Vector3d& p, const Eigen::Vector3d& n, const Eigen::Vector3d& l,
     const Color& kd, const Color& intensity);
