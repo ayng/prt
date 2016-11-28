@@ -13,10 +13,16 @@
 #include <pngwriter.h>
 #include <Eigen/Dense> 
 
-Scene::Scene(int res, int aa, bool bvh) {
+#include <omp.h>
+
+Scene::Scene(int res, int aa, bool bvh, int nthr) {
   resolution = res;
   antialias = aa;
   bvhEnabled = bvh;
+
+  omp_set_dynamic(0); // disable dynamic teams to force thread count.
+  omp_set_num_threads(nthr);
+
   xfIn = Eigen::Scaling(1.0, 1.0, 1.0);
   xfOut = Eigen::Scaling(1.0, 1.0, 1.0);
   material =
@@ -207,14 +213,12 @@ std::vector<Color> Scene::render() {
     bvh = generateBVH();
   }
 
+  printf("[RENDER] Rendering to image.\n");
+
   // Find rays from the pixel locations.
   double start = profiler.now();
+#pragma omp parallel for collapse(2)
   for (int y = 0; y < height; y++) {
-    if (height > 20 && y % (height / 20) == 0) {
-      printf("[ %3.0f%% ] %.3f s\n",
-        static_cast<double>(y) / height * 100,
-        profiler.now() - start);
-    }
     for (int x = 0; x < width; x++) {
       // Determine world coordinates of pixel at (x, y) of image plane.
       Eigen::Vector3d worldPixel = camera.bl

@@ -40,7 +40,7 @@ class Scene {
 
   Profiler profiler;
 
-  Scene(int res, int aa, bool bvh);
+  Scene(int res, int aa, bool bvh, int nthr);
 
   int getWidth();
   int getHeight();

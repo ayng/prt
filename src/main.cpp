@@ -11,12 +11,14 @@
 
 const int kDefaultResolution = 40;
 const int kDefaultAA = 1;
+const int kDefaultNumThreads = 1;
 const char kUsage[] = "Usage: raytracer -o myimage.png [-r <resolution>]";
 
 int main(int argc, char **argv) {
   // Configure with command line arguments.
   int resolution = kDefaultResolution;
   int antialias = kDefaultAA;
+  int numThreads = kDefaultNumThreads;
   char *filename = NULL;
   bool isFilenameSet = false;
   bool bvhFlag = false;
@@ -30,21 +32,24 @@ int main(int argc, char **argv) {
       resolution = atoi(argv[++i]);
     } else if (arg.compare("-aa") == 0) {
       antialias = atoi(argv[++i]);
+    } else if (arg.compare("-t") == 0) {
+      numThreads = atoi(argv[++i]);
     } else if (arg.compare("-bvh") == 0) {
       bvhFlag = true;
     }
   }
-  printf("Resolution: %d\n", resolution);
-  printf("Anti-alias: %d (casting %d rays per pixel)\n",
+  printf("[OPTION] Resolution: %d\n", resolution);
+  printf("[OPTION] Anti-alias: %d (casting %d rays per pixel)\n",
     antialias, antialias*antialias);
-  printf("BVH: %s\n", bvhFlag ? "enabled" : "disabled");
+  printf("[OPTION] BVH: %s\n", bvhFlag ? "enabled" : "disabled");
+  printf("[OPTION] Using %d thread%s.\n", numThreads, numThreads == 1 ? "" : "s");
 
   if (!isFilenameSet) {
     std::cerr << "[ERROR] Filename not set.\n" << kUsage << std::endl;
     return 1;
   }
 
-  Scene scene(resolution, antialias, bvhFlag);
+  Scene scene(resolution, antialias, bvhFlag, numThreads);
 
   // Read scene description from stdin.
   for (std::string line; std::getline(std::cin, line);) {
