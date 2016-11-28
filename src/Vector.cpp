@@ -82,7 +82,7 @@ bool Vector3::operator == (const Vector3& rhs) const {
 }
 
 bool Vector3::isDefined () const {
-  return !(isnan(x) || isnan(y) || isnan(z));
+  return !(std::isnan(x) || std::isnan(y) || std::isnan(z));
 }
 
 double Vector3::dot(const Vector3& rhs) const {

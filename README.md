@@ -49,3 +49,10 @@ This program functions by reading a scene description from STDIN. If nothing is 
 ```
 $ build/raytracer -o myimage.png -r 100 < myscene.txt
 ```
+
+# Testing
+
+To run tests, switch to the prt directory and run `rake test`. By default, the output of the raytracer program wil be suppressed.
+If you wish for the full output to be shown, run `rake test[-v]`.
+For each test, the script will output a PASS or a FAIL, as well as the magnitude of the difference if there is a failure.
+The tests currently do not cover anti aliasing, as it injects a bit of randomness into the generation of output.
