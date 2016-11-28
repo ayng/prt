@@ -280,8 +280,10 @@ Color Scene::trace(const Ray& ray, int bouncesLeft) {
   // Perform phong shading, using shadow rays to check for shadows.
   result = shade(p, n, v, mat);
   // Recursively trace reflective rays.
-  Vector3 reflectedDir = (2 * n) - v;
-  result = result + mat.kr * trace({p, reflectedDir}, bouncesLeft-1);
+  if (mat.kr.r + mat.kr.g + mat.kr.b != 0) {
+    Vector3 reflectedDir = (2 * n) - v;
+    result = result + mat.kr * trace({p, reflectedDir}, bouncesLeft-1);
+  }
   return result;
 }
 
