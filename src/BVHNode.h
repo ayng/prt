@@ -10,7 +10,6 @@
 
 #include "BBox.h"
 #include "Geometry.h"
-#include "Vector.h"
 
 class BVHNode {
  public:

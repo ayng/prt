@@ -24,9 +24,8 @@ cd $dir/..
 echo "Command, Output dimensions, Time in seconds, FLP operations, GFlops"
 
 for i in "${arr[@]}"; do
-  # We assume we already know the codes for SSE_SCALAR_DOUBLE and
-  # SSE_FP_SCALAR_SINGLE.
-  cmd="((perf stat -e r532010 -e r538010 -x, $i) 2>&1)"
+  # These 4 codes account for all floating point operations.
+  cmd="((perf stat -e r531010 -e r532010 -e r534010 -e r538010 -x, $i) 2>&1)"
   output=$(eval $cmd)
   # This code is fragile. It expects a particular type of formatting from
   # raytracer and uses regex to navigate it.  If the output format ever
@@ -34,9 +33,11 @@ for i in "${arr[@]}"; do
   rendertime=$(echo "$output" | egrep "seconds" | egrep -o "[0-9]+\.[0-9]+")
   res=$(echo "$output" | egrep "Preparing" | egrep -o "[0-9]+x[0-9]+")
   # Count the number of floating point operations performed
-  single=$(echo "$output" | egrep "r532010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
-  double=$(echo "$output" | egrep "r538010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
-  flpops=$((double+single))
+  ssingle=$(echo "$output" | egrep "r532010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  psingle=$(echo "$output" | egrep "r534010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  sdouble=$(echo "$output" | egrep "r538010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  pdouble=$(echo "$output" | egrep "r531010" | egrep -o "[0-9]+,," | egrep -o "[0-9]+")
+  flpops=$((pdouble+sdouble+ssingle+psingle))
   # Use python to calculate the gflops
   gflops=$(echo "print $flpops/$rendertime/1e9" | python)
 

@@ -7,8 +7,6 @@ link_directories(${FREETYPE_LIBRARY_DIRS})
 
 add_library(rt
   Scene.cpp
-  Vector.cpp
-  Matrix.cpp
   Color.cpp
   Light.cpp
   Geometry.cpp
@@ -16,6 +14,7 @@ add_library(rt
   BVHNode.cpp
   Camera.cpp
   Profiler.cpp
+  Ray.cpp
 )
 
 add_executable(raytracer main.cpp)

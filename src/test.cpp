@@ -2,70 +2,71 @@
 #include <functional>
 #include <memory>
 #include <vector>
-#include "Matrix.h"
 #include "Ray.h"
-#include "Vector.h"
 #include "Light.h"
 #include "Geometry.h"
 
+
+void dump (Eigen::Matrix4d mat)  {
+  printf("[[ %.3f, %.3f, %.3f, %.3f ]\n", mat(0), mat(1), mat(2), mat(3));
+  printf(" [ %.3f, %.3f, %.3f, %.3f ]\n", mat(4), mat(5), mat(6), mat(7));
+  printf(" [ %.3f, %.3f, %.3f, %.3f ]\n", mat(8), mat(9), mat(10), mat(11));
+  printf(" [ %.3f, %.3f, %.3f, %.3f ]]\n", mat(12), mat(13), mat(14), mat(15));
+}
+
+void dump(Eigen::Vector3d vec)  {
+  printf("<%.3f, %.3f, %.3f>\n", vec.x(), vec.y(), vec.z());
+}
+
+void dump (Eigen::Vector4d vec)  {
+  printf("< %.3f, %.3f, %.3f, %.3f >\n", vec.x(), vec.y(), vec.z(), vec.w());
+}
+
 int main() {
   {
-    Material mat = {Color(1,1,1), Color(1,1,1), Color(1,1,1), 10, Color(1,1,1)};
-    Triangle tri(Vector3(0,0,0), Vector3(0,1,0), Vector3(1,0,0), mat, rotate(-45,0,0), rotate(45,0,0));
-    tri.bbox.min.dump();
-    tri.bbox.max.dump();
-  }
-  {
-    BBox box1(Vector3(-1, -2, -3), Vector3(3, 2, 1));
-    BBox box2(Vector3(-2, -1, 3), Vector3(5, 1, 0));
-    BBox bigBox;
-    bigBox.expand(box1);
-    bigBox.expand(box2);
-    bigBox.min.dump();
-    bigBox.max.dump();
-  }
-  {
-    Vector3 i (1, 1, 0);
-    Vector3 j (0, 1, 0);
-    i.cross(j).dump();
+    Eigen::Vector3d i (1, 1, 0);
+    Eigen::Vector3d j (0, 1, 0);
+    dump(i.cross(j));
   }
   {
     Material mat = {Color(1,1,1), Color(1,1,1), Color(1,1,1), 10, Color(1,1,1)};
-    Triangle tri(Vector3(0,0,0), Vector3(0,1,0), Vector3(1,0,0), mat, scale(1,1,1), scale(1,1,1));
-    tri.a.dump();
+    Eigen::Transform<double,3,Eigen::Affine> w2o(Eigen::Scaling(1.0,1.0,1.0));
+    Eigen::Transform<double,3,Eigen::Affine> o2w(Eigen::Scaling(1.0,1.0,1.0));
+    Triangle tri(Eigen::Vector3d(0,0,0), Eigen::Vector3d( 0,1,0), Eigen::Vector3d(1,0,0), mat, w2o, o2w);
+    dump(tri.a);
   }
   {
     std::vector<std::reference_wrapper<Light>> lights;
-    DirectionalLight dl(Vector3(1, 1, 1), Color(1, 1, 1));
-    PointLight pl(Vector3(1, 1, 1), Color(1, 1, 1));
+    DirectionalLight dl(Eigen::Vector3d(1, 1, 1), Color(1, 1, 1));
+    PointLight pl(Eigen::Vector3d(1, 1, 1), Color(1, 1, 1));
     lights.push_back(dl);
     lights.push_back(pl);
-    lights[0].get().dirToLight(Vector3(0, 0, 0)).dump();
-    lights[1].get().dirToLight(Vector3(0, 0, 0)).dump();
+    dump(lights[0].get().dirToLight(Eigen::Vector3d(0, 0, 0)));
+    dump(lights[1].get().dirToLight(Eigen::Vector3d(0, 0, 0)));
   }
   {
     std::vector<std::unique_ptr<Light>> lights;
     {
-      lights.emplace_back(new DirectionalLight(Vector3(1, 1, 1), Color(1, 1, 1)));
+      lights.emplace_back(new DirectionalLight(Eigen::Vector3d(1, 1, 1), Color(1, 1, 1)));
     }
-    lights[0]->dirToLight(Vector3(0, 0, 0)).dump();
+    dump(lights[0]->dirToLight(Eigen::Vector3d(0, 0, 0)));
   }
   {
-    Matrix4 s = scale(2, 3, 4);
-    Matrix4 sInv = scale(1.0/2, 1.0/3, 1.0/4);
-    Vector4 v(1, 1, 1, 1);
-    s.dot(sInv).dot(v).dump();
+    Eigen::Transform<double,3,Eigen::Affine> s(Eigen::Scaling(2.0, 3.0, 4.0));
+    Eigen::Transform<double,3,Eigen::Affine> sInv(Eigen::Scaling(1.0/2.0, 1.0/3.0, 1.0/4.0));
+    Eigen::Vector4d v(1, 1, 1, 1);
+    dump(s * sInv * v);
   }
   {
-    Matrix4 r = rotate(45, 0, 0);
-    Vector4 v(1, 1, 1, 1);
-    r.dot(v).dump();
+    Eigen::Transform<double,3,Eigen::Affine> r(Eigen::AngleAxis<double>(M_PI / 4.0, Eigen::Vector3d::UnitX()));
+    Eigen::Vector4d v(1, 1, 1, 1);
+    dump(r * v);
   }
   {
-    Matrix4 t = translate(1, 1, 1);
-    Ray r = {Vector3(1, 1, 1), Vector3(1, 1, 1)};
-    Ray rT = t.transform(r);
-    rT.point.dump();
-    rT.dir.dump();
+    Eigen::Transform<double,3,Eigen::Affine> t(Eigen::Translation3d(1.0, 1.0, 1.0));
+    Ray r = {Eigen::Vector3d(1, 1, 1), Eigen::Vector3d(1, 1, 1)};
+    Ray rT = r.transform(t);
+    dump(rT.point);
+    dump(rT.dir);
   }
 }

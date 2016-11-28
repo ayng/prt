@@ -2,7 +2,6 @@
 #define MATRIX_H
 
 #include <initializer_list>
-#include "Vector.h"
 #include "Ray.h"
 
 class Matrix3 {

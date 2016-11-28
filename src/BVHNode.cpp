@@ -13,7 +13,7 @@ bool BVHNode::partition() {
   if (objects.size() <= kMinPartitionSize) {
     return false;
   }
-  Vector3 mid = bbox.centroid();
+  Eigen::Vector3d mid = bbox.centroid();
 
   // Split along x, y, and z.
   std::vector<std::shared_ptr<Geometry>> xLeft, xRight;
@@ -21,16 +21,16 @@ bool BVHNode::partition() {
   std::vector<std::shared_ptr<Geometry>> zLeft, zRight;
 
   for (auto objPtr : objects) {
-    Vector3 centroid = objPtr->bbox.centroid();
+    Eigen::Vector3d centroid = objPtr->bbox.centroid();
 
-    if (centroid.x < mid.x)  xLeft.push_back(objPtr);
-    else                     xRight.push_back(objPtr);
+    if (centroid.x() < mid.x())  xLeft.push_back(objPtr);
+    else                         xRight.push_back(objPtr);
 
-    if (centroid.y < mid.y)  yLeft.push_back(objPtr);
-    else                     yRight.push_back(objPtr);
+    if (centroid.y() < mid.y())  yLeft.push_back(objPtr);
+    else                         yRight.push_back(objPtr);
 
-    if (centroid.z < mid.z)  zLeft.push_back(objPtr);
-    else                     zRight.push_back(objPtr);
+    if (centroid.z() < mid.z())  zLeft.push_back(objPtr);
+    else                         zRight.push_back(objPtr);
   }
 
   // Determine which split was the best.
