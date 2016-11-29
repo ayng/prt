@@ -1,6 +1,7 @@
 import os
 import sys
 import png
+import argparse
 
 def check_result(testname, actual, ref):
     diff_limit = 5
@@ -28,8 +29,8 @@ def check_result(testname, actual, ref):
 def ref_output_exists(target):
     f_ref = ref_output_path(target)
     if not os.path.isfile(f_ref):
-        print("Missing reference output for {0}, \
-                please run 'rake generate_ref_output' while on \
+        print("Missing reference output for {0}, \n\t \
+                please run 'rake generate_ref_output' while on \n\t \
                 the reference build branch".format(f_ref))
         return False
     return True
@@ -41,10 +42,18 @@ def scene_path(target):
     return "./scenes/{0}.txt".format(target)
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--verbose', '-v', '--v', action='store_true')
+    ap.add_argument('-bvh', '--bvh', action='store_true')
+    args = ap.parse_args()
     verbose = False
     if len(sys.argv) > 1 and sys.argv[1] == '-v':
         verbose = True
     to_test = []
+    
+    if args.bvh:
+        print("Running tests using the bounding volume hierarchy")
+
     passed_tests = 0
     for filename in os.listdir("./scenes"):
         if filename.endswith(".txt"):
@@ -54,15 +63,16 @@ def main():
                 print("Queueing test case: {0}".format(test_name))
     for case in to_test:
         target = "/tmp/{0}.png".format(case)
+        bvh_string = '-bvh' if args.bvh else ''
         print("Running test case: {0}".format(case))
 
         # cmd is the command to run for this test.
         # full_cmd is either ==cmd or ==cmd +silenced output,
         # depending on the verbose flag
-        cmd = "build/raytracer -o {} -r 40 < {}".format(target, \
+        cmd = "build/raytracer -o {} {} -r 40 < {}".format(target, bvh_string, \
                 scene_path(case))
         full_cmd = cmd
-        if not verbose:
+        if not args.verbose:
             # this silences stdout but not stderr
             full_cmd += " > /dev/null"
 
