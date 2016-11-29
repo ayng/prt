@@ -367,21 +367,26 @@ Color Scene::shade(const Eigen::Vector3d& p, const Eigen::Vector3d& n,
     Ray shadowRay = {p, l};
     // Check if there are any intersections between this point and the light.
     bool isShadowed = false;
-    for (int i = 0; i < objects.size(); i++) {
-      Geometry& geometry = *objects[i];
-      Ray intersection = geometry.intersect(shadowRay);
-      if (intersection.isDefined()) {
-        double distanceToIntersection = (intersection.point - p).norm();
-        // If the intersection lies between the light and the point,
-        // skip shading for this light.
-        // The second condition prevents self-shadowing.
-        if (distanceToIntersection < light.distanceToLight(p) &&
-            distanceToIntersection > 1e-6) {
-          isShadowed = true;
-          break;
-        }
+
+    std::pair<Ray, Material> nearest;
+    if (bvhEnabled) {
+      nearest = collideBVH(shadowRay);
+    } else {
+      nearest = collide(shadowRay, objects);
+    }
+    
+    if (nearest.first.isDefined()) {
+      double distanceToIntersection = (nearest.first.point - p).norm();
+      // If the intersection lies between the light and the point,
+      // skip shading for this light.
+      // The second condition prevents self-shadowing.
+      if (distanceToIntersection < light.distanceToLight(p) &&
+          distanceToIntersection > 1e-6) {
+        isShadowed = true;
       }
     }
+      
+    
     if (!isShadowed) {
       result = result + diffuse(p, n, l, mat.kd, light.intensity);
       result = result + specular(p, n, v, l, mat.ks, mat.sp, light.intensity);
