@@ -378,6 +378,7 @@ Color Scene::shade(const Eigen::Vector3d& p, const Eigen::Vector3d& n,
         if (distanceToIntersection < light.distanceToLight(p) &&
             distanceToIntersection > 1e-6) {
           isShadowed = true;
+          break;
         }
       }
     }
