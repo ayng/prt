@@ -33,3 +33,12 @@ task :test, :verbose do |t, args|
   end
   sh "python3 test/test.py #{verbose}"
 end
+
+task :test_bvh, :verbose do |t, args|
+  verbose = args.key?(:verbose) || ""
+  if verbose != "-v" and verbose != ""
+    sh "echo 'Must pass the option -v or nothing'"
+  end
+  puts "verbose is #{verbose}\n"
+  sh "python3 test/test.py -bvh #{verbose}"
+end
