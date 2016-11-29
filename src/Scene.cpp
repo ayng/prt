@@ -219,25 +219,37 @@ std::vector<Color> Scene::render() {
 
   // Find rays from the pixel locations.
   double start = profiler.now();
-#pragma omp parallel for collapse(2)
 	int blocked_width = width / RENDER_BLOCK_SIZE;
 	int blocked_height = height / RENDER_BLOCK_SIZE;
 	int leftover_width = width % RENDER_BLOCK_SIZE;
   int leftover_height = height % RENDER_BLOCK_SIZE;
-
-
-	for (int blockx = 0; blockx < blocked_width; blockx++) {
-		for (int blocky = 0; blocky < blocked_height; blocky++) {
-			for (int x = blockx * RENDER_BLOCK_SIZE; x < (blockx + 1) * RENDER_BLOCK_SIZE) {
-				for (int y = blocky  * RENDER_BLOCK_SIZE; y < (blocky + 1) * RENDER_BLOCK_SIZE) {
+	
+	for (int blocky = 0; blocky < blocked_height; blocky++) {
+		for (int blockx = 0; blockx < blocked_width; blockx++) {
+			#pragma omp for
+			for (int y = blocky  * RENDER_BLOCK_SIZE; y < (blocky + 1) * RENDER_BLOCK_SIZE; y++) {	
+				for (int x = blockx * RENDER_BLOCK_SIZE; x < (blockx + 1) * RENDER_BLOCK_SIZE; x++) {
+					Eigen::Vector3d worldPixel = camera.bl
+                                 + unitY * (static_cast<double>(y) / resolution)
+                                 + unitX * (static_cast<double>(x) / resolution);
+      		std::vector<std::pair<double, double>> samples = jitteredGrid(antialias);
+      		for (std::pair<double, double> pt : samples) {
+        		Eigen::Vector3d worldPoint = worldPixel
+                                   + unitX * (pt.first / resolution)
+                                   + unitY * (pt.second / resolution);
+        		Eigen::Vector3d direction = worldPoint - camera.e;
+        		frame[y*width+x] = frame[y*width+x] + trace({camera.e, direction});
+     		  }
+      		frame[y*width+x] = frame[y*width+x] * (1.0 / samples.size());
 				}
 			}
 		}
 	}
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      // Determine world coordinates of pixel at (x, y) of image plane.
-      Eigen::Vector3d worldPixel = camera.bl
+	// do leftover rows at bottom.
+	#pragma omp for 
+	for (int y = height - leftover_height; y < height;  y++) {
+		for (int x = 0; x < width; x++) {
+			Eigen::Vector3d worldPixel = camera.bl
                                  + unitY * (static_cast<double>(y) / resolution)
                                  + unitX * (static_cast<double>(x) / resolution);
       std::vector<std::pair<double, double>> samples = jitteredGrid(antialias);
@@ -249,12 +261,31 @@ std::vector<Color> Scene::render() {
         frame[y*width+x] = frame[y*width+x] + trace({camera.e, direction});
       }
       frame[y*width+x] = frame[y*width+x] * (1.0 / samples.size());
-    }
-  }
+		}
+	}
+	// do leftover columns on right
+	#pragma omp for
+	for (int y = 0; y < height; y++) {
+		for(int x = width - leftover_width; x < width; x++) {
+			Eigen::Vector3d worldPixel = camera.bl
+                                 + unitY * (static_cast<double>(y) / resolution)
+                                 + unitX * (static_cast<double>(x) / resolution);
+      std::vector<std::pair<double, double>> samples = jitteredGrid(antialias);
+      for (std::pair<double, double> pt : samples) {
+        Eigen::Vector3d worldPoint = worldPixel
+                                   + unitX * (pt.first / resolution)
+                                   + unitY * (pt.second / resolution);
+        Eigen::Vector3d direction = worldPoint - camera.e;
+        frame[y*width+x] = frame[y*width+x] + trace({camera.e, direction});
+      }
+      frame[y*width+x] = frame[y*width+x] * (1.0 / samples.size());
+		}
+	}
   printf("[RENDER] Completed in %.3f seconds.\n", profiler.now() - start);
 
   return frame;
 }
+
 
 std::vector<std::pair<double, double>> Scene::jitteredGrid(int size) {
   std::vector<std::pair<double, double>> res;
@@ -383,26 +414,21 @@ Color Scene::shade(const Eigen::Vector3d& p, const Eigen::Vector3d& n,
     Ray shadowRay = {p, l};
     // Check if there are any intersections between this point and the light.
     bool isShadowed = false;
-
-    std::pair<Ray, Material> nearest;
-    if (bvhEnabled) {
-      nearest = collideBVH(shadowRay);
-    } else {
-      nearest = collide(shadowRay, objects);
-    }
-    
-    if (nearest.first.isDefined()) {
-      double distanceToIntersection = (nearest.first.point - p).norm();
-      // If the intersection lies between the light and the point,
-      // skip shading for this light.
-      // The second condition prevents self-shadowing.
-      if (distanceToIntersection < light.distanceToLight(p) &&
-          distanceToIntersection > 1e-6) {
-        isShadowed = true;
+    for (int i = 0; i < objects.size(); i++) {
+      Geometry& geometry = *objects[i];
+      Ray intersection = geometry.intersect(shadowRay);
+      if (intersection.isDefined()) {
+        double distanceToIntersection = (intersection.point - p).norm();
+        // If the intersection lies between the light and the point,
+        // skip shading for this light.
+        // The second condition prevents self-shadowing.
+        if (distanceToIntersection < light.distanceToLight(p) &&
+            distanceToIntersection > 1e-6) {
+          isShadowed = true;
+          break;
+        }
       }
     }
-      
-    
     if (!isShadowed) {
       result = result + diffuse(p, n, l, mat.kd, light.intensity);
       result = result + specular(p, n, v, l, mat.ks, mat.sp, light.intensity);
